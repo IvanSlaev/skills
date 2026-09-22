@@ -7,41 +7,42 @@ Columns: **1P** = first-party Claude API, **P-AWS** = Claude Platform on AWS (An
 | Feature | 1P | P-AWS | Bedrock | Vertex | Foundry | Notes |
 |---|---|---|---|---|---|---|
 | Messages, streaming, tool use | Yes | Yes | Yes | Yes | Yes | Core API |
-| PDF input | Yes | Yes | Yes | Yes | beta | |
-| Structured outputs / strict tool use | Yes | Yes | Yes | Yes | beta | |
-| Adaptive thinking / effort | Yes | Yes | Yes | Yes | beta | |
-| Extended thinking | Yes | Yes | Yes | Yes | beta | |
+| PDF input | Yes | Yes | Yes | Yes | Yes | |
+| Structured outputs / strict tool use | Yes | Yes | Yes | Yes | Yes | |
+| Adaptive thinking / effort | Yes | Yes | Yes | Yes | Yes | |
+| Extended thinking | Yes | Yes | Yes | Yes | Yes | |
 | Prompt caching (5m, 1h) | Yes | Yes | Yes | Yes | Yes | |
 | Automatic prompt caching | Yes | Yes | Yes | Yes | Yes | The legacy Bedrock integration (Opus 4.6 and earlier) rejects top-level `cache_control` with a 400 - explicit breakpoints only there |
-| Token counting | Yes | Yes | Yes | Yes | beta | |
-| Citations | Yes | Yes | Yes | Yes | beta | |
-| Search results content blocks | Yes | Yes | Yes | Yes | beta | |
-| Fine-grained tool streaming | Yes | Yes | Yes | Yes | Yes | |
+| Token counting | Yes | Yes | Yes | Yes | Yes | |
+| Citations | Yes | Yes | Yes | Yes | Yes | |
+| Search results content blocks | Yes | Yes | Yes | Yes | Yes | |
+| Fine-grained tool streaming | Yes | Yes | Yes | Yes | Yes | Bedrock: `eager_input_streaming` on the newer serving stack only (Opus 4.7/4.8/5, Fable 5, Sonnet 4.6/5); older deployments (Opus 4.5/4.6, Sonnet 4.0/4.5, Haiku 4.5) 400 on the field |
 | Compaction | beta | beta | beta | beta | beta | |
 | Context editing | beta | beta | beta | beta | beta | |
-| Context windows (1M) | Yes | Yes | Yes | Yes | beta | |
+| Context windows (1M) | Yes | Yes | Yes | Yes | Yes | |
 | `inference_geo` (data residency) | Yes | Yes | No | No | No | |
 | **Server-side tools** | | | | | | |
-| &nbsp;&nbsp;Web search | Yes | Yes | No | Yes | beta | Vertex: basic `web_search_20250305` only (no `_20260209` dynamic filtering) |
-| &nbsp;&nbsp;Web fetch | Yes | Yes | No | No | beta | |
-| &nbsp;&nbsp;Code execution | Yes | Yes | No | No | beta | |
-| &nbsp;&nbsp;Tool search | Yes | Yes | Yes | Yes | beta | Bedrock: InvokeModel API only, not Converse |
+| &nbsp;&nbsp;Web search | Yes | Yes | No | Yes | Yes | Vertex: basic `web_search_20250305` only (no `_20260209` dynamic filtering). Foundry Hosted on Azure: basic `web_search_20250305` only |
+| &nbsp;&nbsp;Web fetch | Yes | Yes | No | No | Yes | Foundry Hosted on Azure: basic `web_fetch_20250910` only |
+| &nbsp;&nbsp;Code execution | Yes | Yes | No | No | Yes | Foundry: Hosted on Anthropic deployments only - Hosted on Azure returns a 400 |
+| &nbsp;&nbsp;Tool search | Yes | Yes | Yes | Yes | Yes | Bedrock: InvokeModel API only, not Converse |
 | &nbsp;&nbsp;Advisor tool | beta | beta | No | No | No | |
 | **Client-implemented tools** | | | | | | |
-| &nbsp;&nbsp;Bash, text editor, memory | Yes | Yes | Yes | Yes | beta | |
+| &nbsp;&nbsp;Bash, text editor, memory | Yes | Yes | Yes | Yes | Yes | |
 | &nbsp;&nbsp;Computer use | beta | beta | beta | beta | beta | |
 | **Agentic / orchestration** | | | | | | |
-| &nbsp;&nbsp;Agent Skills (Messages API) | Yes | Yes | No | No | beta | |
-| &nbsp;&nbsp;Programmatic tool calling | Yes | Yes | No | No | beta | |
+| &nbsp;&nbsp;Agent Skills (Messages API) | Yes | Yes | No | No | beta | Foundry: Hosted on Anthropic deployments only - Hosted on Azure returns a 400 |
+| &nbsp;&nbsp;Programmatic tool calling | Yes | Yes | No | No | Yes | Foundry: Hosted on Anthropic deployments only - Hosted on Azure returns a 400 |
 | &nbsp;&nbsp;MCP connector | beta | beta | No | No | beta | |
 | &nbsp;&nbsp;Managed Agents | beta | beta | No | No | No | Foundry: No (inferred; not in Foundry docs either way) |
 | &nbsp;&nbsp;Self-hosted sandboxes | beta | beta | No | No | No | P-AWS: worker authenticates with IAM/SigV4 or an AWS-Console API key + `AnthropicSelfHostedEnvironmentAccess` (Console environment keys don't work there); sessions on self-hosted environments cannot attach memory stores; `GET /v1/environments/{id}/work` list endpoint not supported, other work endpoints OK |
 | **API endpoints** | | | | | | |
 | &nbsp;&nbsp;Message Batches | Yes | Yes | No | No | No | |
-| &nbsp;&nbsp;Files API | Yes | Yes | No | No | beta | |
+| &nbsp;&nbsp;Files API | Yes | Yes | No | No | beta | Foundry: Hosted on Anthropic deployments only - Hosted on Azure returns a 400 |
 | &nbsp;&nbsp;Models API | Yes | Yes | No | No | No | |
 | **Other** | | | | | | |
 | &nbsp;&nbsp;Mid-conversation system messages | Yes | Yes | Yes | Yes | No | Claude Opus 5, Claude Opus 4.8, Claude Fable 5, Claude Fable 5.1, Claude Mythos 5, Claude Mythos 5.1; not Claude Sonnet 5. Bedrock: InvokeModel passthrough, not ARN-versioned models |
+| &nbsp;&nbsp;Mid-conversation tool changes | beta | beta | beta | beta | No | Same models as mid-conversation system messages; beta `mid-conversation-tool-changes-2026-07-01` |
 | &nbsp;&nbsp;Turn-scoped (`clear_at`) system messages | beta | beta | beta | beta | No | Same models as mid-conversation system messages; beta `mid-conversation-system-clear-at-2026-08-21` (on Bedrock/Vertex pass the value as a beta) |
 | &nbsp;&nbsp;Per-message `effort` (system message `output_config`) | beta | No | No | No | No | Claude Fable 5.1, Claude Mythos 5.1, Claude Opus 5; beta `mid-conversation-output-config-2026-07-01`; Claude API at launch (Bedrock/Vertex/Foundry unconfirmed; Claude Opus 5 excluded on Bedrock) |
 | &nbsp;&nbsp;`thinking.display: "updates"` | beta | beta | beta | beta | beta | Claude Fable 5.1, Claude Mythos 5.1, Claude Fable 5; beta `thinking-display-updates-2026-08-18` (pass the beta value per platform); without it `"updates"` is rejected as an unknown `display` value |

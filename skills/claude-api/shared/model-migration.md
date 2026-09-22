@@ -28,6 +28,7 @@ For the latest, authoritative version (with code samples in every supported lang
 | Migrating to Claude Fable 5.1 from Claude Fable 5 | Migrating Claude Fable 5 / Claude Opus 5 / Claude Mythos 5 -> Claude Fable 5.1 or Claude Mythos 5.1 (forced `tool_choice` 400s; "preserved thinking" - model-bound blocks and the history-editing check; per-message effort; append-only per-turn reminders; `display: "updates"` progress updates; cheaper cache reads; behavioral re-tuning) |
 | Claude Fable 5.1 from Claude Fable 5 Migration Checklist | The required vs optional items for the Claude Fable 5 -> Claude Fable 5.1 move, tagged `[BLOCKS]` / `[TUNE]` |
 | Verify the Migration | After edits - runtime spot-check |
+| Ground the migration with an eval | User reports a behavioral regression on the new model |
 
 **TL;DR:** Change the model ID string. If you were using `budget_tokens`, switch to `thinking: {type: "adaptive"}`. If you were using assistant prefills, they 400 on both Opus 4.6 and Sonnet 4.6 - switch to one of the prefill replacements (most often `output_config.format`; see the table in Breaking Changes by Source Model). If you're moving from Sonnet 4.5 to Sonnet 4.6, set `effort` explicitly - 4.6 defaults to `high`. Remove the `effort-2025-11-24` and `fine-grained-tool-streaming-2025-05-14` beta headers (GA on 4.6); remove `interleaved-thinking-2025-05-14` once you're on adaptive thinking (keep it only while using the transitional `budget_tokens` escape hatch). Then drop back from `client.beta.messages.create` to `client.messages.create`. Dial back any aggressive "CRITICAL: YOU MUST" tool instructions; 4.6 follows the system prompt much more closely.
 
@@ -169,14 +170,14 @@ If you're applying several prompt-tuning edits at once, offer them as a short li
 
 1. **Confirm the target model ID.** Use only the exact strings from `shared/models.md` - do not append date suffixes to aliases (`claude-opus-4-6`, not `claude-opus-4-6-20251101`). Guessing an ID will 404.
 2. **Check which features your code uses** with this checklist:
-   - `thinking: {type: "enabled", budget_tokens: N}` -> migrate to adaptive thinking on Opus 4.6 / Sonnet 4.6 (still functional but deprecated)
-   - Assistant-turn prefills (`messages` ending with `role: "assistant"`) -> must change on Opus 4.6 / Sonnet 4.6 (returns 400)
-   - `output_format` parameter on `messages.create()` -> must change on all models (deprecated API-wide)
-   - `max_tokens > ~16000` -> must stream on any model (above ~16K risks SDK HTTP timeouts). When streaming, every current model reaches 128K except Haiku 4.5, which caps at 64K
-   - Beta headers `effort-2025-11-24`, `fine-grained-tool-streaming-2025-05-14`, `interleaved-thinking-2025-05-14` -> GA on 4.6, remove them and switch from `client.beta.messages.create` to `client.messages.create`
-   - Moving Sonnet 4.5 -> Sonnet 4.6 with no `effort` set -> 4.6 defaults to `high`, which may change your latency/cost profile
-   - System prompts with `CRITICAL`, `MUST`, `If in doubt, use X` language -> likely to overtrigger on 4.6 (see Prompt-Behavior Changes)
-   - Coming from 3.x / 4.0 / 4.1: also check sampling params (`temperature` + `top_p`), tool versions (`text_editor_20250728`), `refusal` + `model_context_window_exceeded` stop reasons, trailing-newline tool-param handling
+ - `thinking: {type: "enabled", budget_tokens: N}` -> migrate to adaptive thinking on Opus 4.6 / Sonnet 4.6 (still functional but deprecated)
+ - Assistant-turn prefills (`messages` ending with `role: "assistant"`) -> must change on Opus 4.6 / Sonnet 4.6 (returns 400)
+ - `output_format` parameter on `messages.create()` -> must change on all models (deprecated API-wide)
+ - `max_tokens > ~16000` -> must stream on any model (above ~16K risks SDK HTTP timeouts). When streaming, every current model reaches 128K except Haiku 4.5, which caps at 64K
+ - Beta headers `effort-2025-11-24`, `fine-grained-tool-streaming-2025-05-14`, `interleaved-thinking-2025-05-14` -> GA on 4.6, remove them and switch from `client.beta.messages.create` to `client.messages.create`
+ - Moving Sonnet 4.5 -> Sonnet 4.6 with no `effort` set -> 4.6 defaults to `high`, which may change your latency/cost profile
+ - System prompts with `CRITICAL`, `MUST`, `If in doubt, use X` language -> likely to overtrigger on 4.6 (see Prompt-Behavior Changes)
+ - Coming from 3.x / 4.0 / 4.1: also check sampling params (`temperature` + `top_p`), tool versions (`text_editor_20250728`), `refusal` + `model_context_window_exceeded` stop reasons, trailing-newline tool-param handling
 3. **Test on a single request first.** Run one call against the new model, inspect the response, then roll out.
 
 ---
@@ -520,7 +521,7 @@ If the code uses the `AnthropicBedrockMantle` client (Python `anthropic[bedrock]
 
 When migrating a Bedrock file, apply the same rename-table row as first-party, then keep/add the `anthropic.` prefix. Do **not** generate a first-party `claude-*` ID for a Bedrock client - it will 400.
 
-**Skip for Bedrock:** the `code_execution_*` tool-version checklist item and the **Task Budgets** section - neither is available on Bedrock (see `shared/platform-availability.md` for the per-feature table). Everything else in this guide - `effort`, adaptive/extended thinking, `output_config.format`, `thinking.display`, fine-grained tool streaming, token counting - is available on Bedrock.
+**Skip for Bedrock:** the `code_execution_*` tool-version checklist item and the **Task Budgets** section - neither is available on Bedrock (see `shared/platform-availability.md` for the per-feature table). Everything else in this guide - `effort`, adaptive/extended thinking, `output_config.format`, `thinking.display`, token counting - is available on Bedrock; fine-grained tool streaming (`eager_input_streaming`) is available on Bedrock's newer serving stack only (see the per-model note in `shared/platform-availability.md`).
 
 > **Out of scope:** the legacy Amazon Bedrock integration (`InvokeModel` / `Converse` APIs with ARN-versioned IDs like `anthropic.claude-3-5-sonnet-20241022-v2:0`) uses a different request shape and model-ID format. This guide does not cover it; WebFetch the Bedrock page in `shared/live-sources.md` if the user is migrating between the two Bedrock integrations.
 
@@ -1870,3 +1871,9 @@ m.capabilities["effort"]["max"]["supported"]
 ```
 
 See `shared/models.md` for the full capability lookup pattern.
+
+---
+
+## Ground the migration with an eval
+
+A spot-check confirms the new model answers; it doesn't confirm the app still behaves the way the user wants. When the user reports a behavioral regression on the new model - e.g. *"it refuses things the old one handled fine"*, *"tool calls dropped off after the swap"*, *"responses got twice as long"* - don't tune the prompt by feel. Read `shared/evals/build-eval.md` and build a small eval that captures the regression, then read `shared/evals/eval-hillclimb.md` to iterate the prompt or harness against that eval until the score moves. Grounding the fix in an eval keeps the migration decision honest and leaves the user with a regression test for the next model swap.
